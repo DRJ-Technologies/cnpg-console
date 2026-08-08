@@ -1,0 +1,50 @@
+# Fork-local image build.
+#
+# Upstream's release.yaml only fires on v* tags and pushes to
+# ghcr.io/firemanxbr/... We need an image from a branch, in our own org, so
+# this is kept separate to keep the fork's diff against upstream readable.
+name: DRJ image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["drj/**"]
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  image:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/drj-technologies/cnpg-console
+          tags: |
+            type=sha,format=long
+            type=ref,event=branch
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+      # The digest is what the Helm values pin. Surface it in the run summary
+      # so the deploy does not have to guess a mutable tag.
+      - run: |
+          echo "### Image" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
