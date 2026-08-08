@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { k8s } from '$lib/api/kubernetes';
-  import { currentNamespace } from '$lib/stores/namespace';
+  import { currentNamespace, nsScope } from '$lib/stores/namespace';
   import { watchCNPGResource, type WatchHandle } from '$lib/api/watch';
   import StatusBadge from '$lib/components/StatusBadge.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -30,8 +30,9 @@
   async function load() {
     loading = true;
     watcher?.close();
-    const ns = $currentNamespace;
-    if (!ns) { loading = false; return; }
+    // undefined => cluster-scoped list/watch across all namespaces
+    const ns = nsScope($currentNamespace);
+    
     try {
       clusters = (await k8s.clusters.list(ns)).items || [];
       // Start real-time watch — UI updates instantly on cluster changes
@@ -112,11 +113,12 @@
   {:else}
     <div class="grid">
       {#each clusters as c}
-      <a href="/clusters/{c.metadata.name}" class="card">
+      <a href="/clusters/{c.metadata.name}?ns={c.metadata.namespace}" class="card">
         <div class="card-top">
           <h3>{c.metadata.name}</h3>
           <StatusBadge status={c.status?.phase || 'Unknown'} />
         </div>
+        <p class="card-ns">{c.metadata.namespace}</p>
         {#if c.spec.description}<p class="card-desc">{c.spec.description}</p>{/if}
         <div class="stats">
           <div><small>Instances</small><strong>{c.status?.readyInstances || 0}/{c.spec.instances}</strong></div>
@@ -161,6 +163,7 @@
   .card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.12); transform: translateY(-1px); }
   .card-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: .5rem; }
   .card-top h3 { margin: 0; color: var(--cnpg-blue-dark); }
+  .card-ns { font-family: var(--font-mono); font-size: .75rem; color: var(--cnpg-gray-500); margin: 0 0 .5rem; }
   .card-desc { margin: 0 0 .75rem; font-size: .8rem; color: var(--cnpg-gray-500); }
   .stats { display: flex; gap: 1.5rem; margin-bottom: 1rem; }
   .stats small { display: block; font-size: .7rem; color: var(--cnpg-gray-400); text-transform: uppercase; letter-spacing: .05em; }

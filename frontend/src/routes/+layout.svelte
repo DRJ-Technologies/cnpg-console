@@ -1,7 +1,7 @@
 <script lang="ts">
   import '../app.css';
   import { auth, restoreSession, logout } from '$lib/stores/auth';
-  import { currentNamespace, allNamespaces } from '$lib/stores/namespace';
+  import { currentNamespace, allNamespaces, ALL_NAMESPACES } from '$lib/stores/namespace';
   import { onMount } from 'svelte';
   import { goto } from '$app/navigation';
   import { page } from '$app/stores';
@@ -31,9 +31,10 @@
       const res = await k8s.listNamespaces();
       const names = (res.items || []).map((ns: any) => ns.metadata.name).sort();
       allNamespaces.set(names);
-      if (names.length && !$currentNamespace) {
-        currentNamespace.set(names.includes('default') ? 'default' : names[0]);
-      }
+      // Default to every namespace. This is a fleet console: defaulting to
+      // 'default' showed an empty page, because CNPG clusters live in their
+      // own namespaces and essentially never in 'default'.
+      if (!$currentNamespace) currentNamespace.set(ALL_NAMESPACES);
     } catch (e) {
       console.error('Failed to fetch namespaces:', e);
     }
@@ -59,6 +60,7 @@
     </div>
     <div class="sidebar-bottom">
       <select bind:value={$currentNamespace} class="ns-sel">
+        <option value={ALL_NAMESPACES}>All namespaces</option>
         {#each $allNamespaces as ns}<option value={ns}>{ns}</option>{/each}
       </select>
       <div class="user-info">{$auth.user?.name}</div>

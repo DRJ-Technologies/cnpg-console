@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { k8s } from '$lib/api/kubernetes';
-  import { currentNamespace } from '$lib/stores/namespace';
+  import { currentNamespace, nsScope } from '$lib/stores/namespace';
 
   let scs: any[] = $state([]);
   let imageCatalogs: any[] = $state([]);
@@ -11,8 +11,9 @@
   currentNamespace.subscribe(() => loadImageCatalogs());
 
   async function loadImageCatalogs() {
-    const ns = $currentNamespace;
-    if (!ns) return;
+    // undefined => cluster-scoped list/watch across all namespaces
+    const ns = nsScope($currentNamespace);
+    
     try {
       imageCatalogs = (await k8s.imagecatalogs.list(ns)).items || [];
     } catch {}

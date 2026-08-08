@@ -70,9 +70,11 @@ export const k8s = {
 
   // Core K8s resources
   listNamespaces: () => req<any>('/api/v1/namespaces'),
-  listPods: (ns: string, labelSelector?: string) =>
+  // undefined ns => cluster-scoped (/api/v1/pods), i.e. all namespaces.
+  listPods: (ns: string | undefined, labelSelector?: string) =>
     req<any>(
-      '/api/v1/namespaces/' + ns + '/pods' + (labelSelector ? '?labelSelector=' + encodeURIComponent(labelSelector) : ''),
+      (ns ? '/api/v1/namespaces/' + ns + '/pods' : '/api/v1/pods') +
+        (labelSelector ? '?labelSelector=' + encodeURIComponent(labelSelector) : ''),
     ),
   getPodLogs: (ns: string, pod: string, container?: string, tailLines?: number) =>
     req<string>(
@@ -84,13 +86,15 @@ export const k8s = {
         (tailLines || 100) +
         (container ? '&container=' + container : ''),
     ),
-  listEvents: (ns: string, fieldSelector?: string) =>
+  listEvents: (ns: string | undefined, fieldSelector?: string) =>
     req<any>(
-      '/api/v1/namespaces/' + ns + '/events' + (fieldSelector ? '?fieldSelector=' + encodeURIComponent(fieldSelector) : ''),
+      (ns ? '/api/v1/namespaces/' + ns + '/events' : '/api/v1/events') +
+        (fieldSelector ? '?fieldSelector=' + encodeURIComponent(fieldSelector) : ''),
     ),
-  listServices: (ns: string, labelSelector?: string) =>
+  listServices: (ns: string | undefined, labelSelector?: string) =>
     req<any>(
-      '/api/v1/namespaces/' + ns + '/services' + (labelSelector ? '?labelSelector=' + encodeURIComponent(labelSelector) : ''),
+      (ns ? '/api/v1/namespaces/' + ns + '/services' : '/api/v1/services') +
+        (labelSelector ? '?labelSelector=' + encodeURIComponent(labelSelector) : ''),
     ),
   listSecrets: (ns: string, labelSelector?: string) =>
     req<any>(

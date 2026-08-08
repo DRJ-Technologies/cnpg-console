@@ -1,6 +1,6 @@
 <script lang="ts">
   import { k8s } from '$lib/api/kubernetes';
-  import { currentNamespace } from '$lib/stores/namespace';
+  import { currentNamespace, nsScope } from '$lib/stores/namespace';
   import { watchCNPGResource, type WatchHandle } from '$lib/api/watch';
   import StatusBadge from '$lib/components/StatusBadge.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
@@ -38,8 +38,9 @@
     loading = true;
     watchers.forEach(w => w.close());
     watchers = [];
-    const ns = $currentNamespace;
-    if (!ns) { loading = false; return; }
+    // undefined => cluster-scoped list/watch across all namespaces
+    const ns = nsScope($currentNamespace);
+    
     try {
       const [b, s, c] = await Promise.all([
         k8s.backups.list(ns),

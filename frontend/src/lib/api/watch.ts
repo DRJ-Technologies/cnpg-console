@@ -112,12 +112,15 @@ const CNPG = 'apis/postgresql.cnpg.io/v1';
  */
 export function watchCNPGResource(
   resource: string,
-  namespace: string,
+  // undefined => cluster-scoped watch across every visible namespace.
+  namespace: string | undefined,
   items: { value: any[] },
   onUpdate?: () => void,
 ): WatchHandle {
   return watchResource(
-    '/' + CNPG + '/namespaces/' + namespace + '/' + resource,
+    namespace
+      ? '/' + CNPG + '/namespaces/' + namespace + '/' + resource
+      : '/' + CNPG + '/' + resource,
     (event) => {
       const obj = event.object;
       const idx = items.value.findIndex(

@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import { page } from '$app/stores';
   import { k8s } from '$lib/api/kubernetes';
-  import { currentNamespace } from '$lib/stores/namespace';
+  import { currentNamespace, nsScope } from '$lib/stores/namespace';
   import StatusBadge from '$lib/components/StatusBadge.svelte';
   import ConfirmDialog from '$lib/components/ConfirmDialog.svelte';
   import type { CNPGCluster } from '$lib/types/cnpg';
@@ -20,7 +20,7 @@
 
   $effect(() => {
     const name = $page.params.name;
-    const ns = $currentNamespace;
+    const ns = $page.url.searchParams.get('ns') || nsScope($currentNamespace);
     if (name && ns) load(ns, name);
   });
 
@@ -48,7 +48,9 @@
 
   async function triggerSwitchover() {
     if (!cluster || !switchoverTarget) return;
-    const ns = $currentNamespace;
+    // A concrete cluster always knows its own namespace; prefer that over the
+    // selector, which may be the all-namespaces sentinel.
+    const ns: string = cluster.metadata.namespace;
     await k8s.clusters.patch(ns, cluster.metadata.name, { status: { targetPrimary: switchoverTarget } });
     showSwitchover = false;
     switchoverTarget = '';
