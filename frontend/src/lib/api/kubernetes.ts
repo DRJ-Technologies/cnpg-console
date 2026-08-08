@@ -1,8 +1,9 @@
+import { apiPath } from '$lib/stores/cluster';
 const CNPG = 'apis/postgresql.cnpg.io/v1';
 
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
   const t = sessionStorage.getItem('access_token');
-  const r = await fetch(path, {
+  const r = await fetch(apiPath(path), {
     ...opts,
     headers: {
       'Content-Type': 'application/json',

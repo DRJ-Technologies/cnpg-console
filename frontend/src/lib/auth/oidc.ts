@@ -14,6 +14,8 @@ export interface OidcConfig {
   scopes: string;
   /** Same-origin path that nginx proxies to the issuer's token endpoint. */
   tokenPath: string;
+  /** Kubernetes clusters this console fronts; each key maps to an nginx route. */
+  clusters?: { key: string; label: string }[];
 }
 
 const CONFIG_URL = '/config.json';

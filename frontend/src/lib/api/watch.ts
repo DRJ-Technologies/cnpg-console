@@ -1,3 +1,4 @@
+import { apiPath } from '$lib/stores/cluster';
 /**
  * Kubernetes Watch API client.
  *
@@ -40,7 +41,7 @@ export function watchResource(
 
     const t = sessionStorage.getItem('access_token');
     const separator = path.includes('?') ? '&' : '?';
-    const url = path + separator + 'watch=true';
+    const url = apiPath(path) + separator + 'watch=true';
 
     try {
       const response = await fetch(url, {

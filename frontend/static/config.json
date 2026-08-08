@@ -2,5 +2,6 @@
   "issuer": "https://auth.example.com",
   "clientId": "cnpg-console",
   "scopes": "openid profile email groups",
-  "tokenPath": "/oidc/token"
+  "tokenPath": "/oidc/token",
+  "clusters": []
 }
