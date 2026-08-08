@@ -1,8 +1,14 @@
 # Fork-local image build.
 #
 # Upstream's release.yaml only fires on v* tags and pushes to
-# ghcr.io/firemanxbr/... We need an image from a branch, in our own org, so
-# this is kept separate to keep the fork's diff against upstream readable.
+# ghcr.io/firemanxbr/... We need an image from a branch, in our own registry,
+# so this is kept separate to keep the fork's diff against upstream readable.
+#
+# Target is ECR, not GHCR: the EKS nodes that run this already pull from
+# 202011926204.dkr.ecr.us-west-2 via their instance role, so nothing has to be
+# stored in the cluster. GHCR would have meant a private-package pull secret
+# tied to a personal token. Auth here is GitHub OIDC -> IAM role assumption,
+# so there are no long-lived AWS keys in this repo either.
 name: DRJ image
 
 on:
@@ -12,7 +18,11 @@ on:
 
 permissions:
   contents: read
-  packages: write
+  id-token: write # required to mint the OIDC token AWS trusts
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REPO: 202011926204.dkr.ecr.us-west-2.amazonaws.com/platform/cnpg-console
 
 jobs:
   image:
@@ -21,19 +31,24 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
-      - uses: docker/login-action@v3
+
+      - uses: aws-actions/configure-aws-credentials@v4
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          role-to-assume: arn:aws:iam::202011926204:role/drj-cnpg-console-ecr-push
+          aws-region: ${{ env.AWS_REGION }}
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/drj-technologies/cnpg-console
-          tags: |
-            type=sha,format=long
-            type=ref,event=branch
-      - uses: docker/build-push-action@v6
+          images: ${{ env.ECR_REPO }}
+          # SHA ONLY. The repository is imageTagMutability=IMMUTABLE, so a
+          # mutable tag like the branch name fails on the second push.
+          tags: type=sha,format=long
+
+      - id: build
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -41,10 +56,12 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-      # The digest is what the Helm values pin. Surface it in the run summary
-      # so the deploy does not have to guess a mutable tag.
+
       - run: |
-          echo "### Image" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
-          echo '```' >> $GITHUB_STEP_SUMMARY
+          {
+            echo "### Image"
+            echo '```'
+            echo "${{ steps.meta.outputs.tags }}"
+            echo "digest: ${{ steps.build.outputs.digest }}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
